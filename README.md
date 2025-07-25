@@ -1,9 +1,5 @@
 ### Установка и запуск приложения на локальном сервере
 
-- перейти в директорию
-
-cd main_tree_menu
-
 - создать виртуальное окружение 
 
 python -m venv venv
@@ -11,6 +7,10 @@ python -m venv venv
 - установить все зависимости из пакета requirements.txt
 
 pip install -r requirements.txt
+
+- перейти в директорию
+
+cd main_tree_menu
 
 - создать суперпользователя 'admin'
 
