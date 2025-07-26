@@ -4,7 +4,7 @@
 
 {% load draw_menu %}
 {% block content %}
-
-{% draw_menu 'main_menu' %}
-
+{% for menu in menus %}
+{% draw_menu menu.title %}
+{% endfor %}
 {% endblock %}

@@ -1,21 +1,23 @@
 from django import template
+from django.template.context import RequestContext
+from django.utils.safestring import SafeString
+
 from tree_menu.models import Item
+
 
 register = template.Library()
 
 
 @register.inclusion_tag('tree_menu/menu.html', takes_context=True)
-def draw_menu(context, menu):
-    # Загружаем все элементы меню одним запросом
-    items = list(Item.objects.filter(menu__title=menu))
+def draw_menu(context: RequestContext, menu: SafeString) -> dict:
+    all_items = context.get('all_items', [])
+    items = [item for item in all_items if item.menu.title == menu]
 
     items_by_id = {item.id: item for item in items}
 
-    # Инициализируем список детей
     for item in items:
         item.child_items = []
 
-    # Строим дерево
     root_items = []
     for item in items:
         if item.parent_id:
@@ -25,7 +27,6 @@ def draw_menu(context, menu):
         else:
             root_items.append(item)
 
-    # Определяем выбранный элемент и путь к нему
     selected_slug = context['request'].GET.get(menu)
     selected_item = None
     selected_path_ids = set()
@@ -33,21 +34,24 @@ def draw_menu(context, menu):
     if selected_slug:
         selected_item = next(
             (item for item in items if item.slug == selected_slug), None)
-        current = selected_item
-        while current:
-            selected_path_ids.add(current.id)
-            current = items_by_id.get(current.parent_id)
+        if selected_item:
+            current = selected_item
+            while current:
+                selected_path_ids.add(current.id)
+                current = items_by_id.get(current.parent_id)
 
-    # Отмечаем выбранные элементы
-    def mark_selected(items):
-        for item in items:
+    def mark_selected(items_list):
+        for item in items_list:
             item.is_selected = item.id in selected_path_ids
-            mark_selected(item.child_items)
+            if hasattr(item, 'child_items'):
+                mark_selected(item.child_items)
 
     mark_selected(root_items)
 
-    return {
+    result_dict = {
         'items': root_items,
         'menu': menu,
         'selected_item': selected_item,
     }
+
+    return result_dict
