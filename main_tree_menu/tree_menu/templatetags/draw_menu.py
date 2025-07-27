@@ -1,5 +1,4 @@
 from django import template
-from django.db.models.query import QuerySet
 from django.utils.safestring import SafeString
 from tree_menu.models import Item
 
@@ -10,47 +9,39 @@ register = template.Library()
 def draw_menu(context: dict, menu: SafeString) -> dict:
     selected_item_slug = context['request'].GET.get(menu, None)
 
+    # Один запрос к БД для всех элементов меню
     items = Item.objects.filter(
-        menu__title=menu).select_related('menu', 'parent')
-    items_values = items.values()
+        menu__title=menu).select_related('parent', 'menu')
+    items_list = list(items)
 
-    primary_items = list(items_values.filter(parent=None))
+    # Создаем словарь для быстрого доступа и собираем дерево
+    items_dict = {}
+    root_items = []
 
-    result_dict = {'items': primary_items, 'menu': menu}
+    for item in items_list:
+        items_dict[item.id] = item
+        if not hasattr(item, 'child_items'):
+            item.child_items = []
 
+        if item.parent_id:
+            if item.parent_id in items_dict:
+                parent = items_dict[item.parent_id]
+                if not hasattr(parent, 'child_items'):
+                    parent.child_items = []
+                parent.child_items.append(item)
+        else:
+            root_items.append(item)
+
+    # Помечаем путь к выбранному элементу
     if selected_item_slug:
-        try:
-            selected_item = items.get(slug=selected_item_slug)
-            selected_item_id_list = get_selected_item_id_list(selected_item)
+        selected_item = next(
+            (item for item in items_list if item.slug == selected_item_slug), None)
+        if selected_item:
+            # Поднимаемся вверх по родителям, помечая их
+            current = selected_item
+            while current:
+                current.is_open = True
+                current = items_dict.get(
+                    current.parent_id) if current.parent_id else None
 
-            for item in primary_items:
-                if item['id'] in selected_item_id_list:
-                    item['child_items'] = get_child_items(
-                        items_values, item['id'], selected_item_id_list)
-
-        except Item.DoesNotExist:
-            result_dict['items'] = primary_items
-            result_dict['error'] = f"Item with slug '{selected_item_slug}' does not exist."
-
-    return result_dict
-
-
-def get_child_items(items_values: QuerySet, current_item_id: int, selected_item_id_list: list) -> list:
-    item_list = list(items_values.filter(parent_id=current_item_id))
-
-    for item in item_list:
-        if item['id'] in selected_item_id_list:
-            item['child_items'] = get_child_items(
-                items_values, item['id'], selected_item_id_list)
-
-    return item_list
-
-
-def get_selected_item_id_list(selected_item: Item) -> list:
-    selected_item_id_list = []
-
-    while selected_item:
-        selected_item_id_list.append(selected_item.id)
-        selected_item = selected_item.parent
-
-    return selected_item_id_list
+    return {'items': root_items, 'menu': menu}
