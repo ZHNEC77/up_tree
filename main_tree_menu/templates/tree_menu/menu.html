@@ -1,14 +1,14 @@
 <ul>
     {% if items %}
-        {% for item in items %}
-            <li>
-                <a href="?{{ menu }}={{ item.slug }}">{{ item.title }}</a>
-            </li>
-            {% if item.child_items %}
-                {% include 'tree_menu/menu.html' with items=item.child_items %}
-            {% endif %}
-        {% endfor %}
+    {% for item in items %}
+    <li>
+        <a href="?{{ menu }}={{ item.slug }}">{{ item.title }}</a>
+    </li>
+    {% if item.child_items %}
+    {% include 'tree_menu/menu.html' with items=item.child_items %}
+    {% endif %}
+    {% endfor %}
     {% else %}
-        <meta http-equiv="Refresh" content="0; {% url 'menu:details' slug=slug %}">
+    <p>No items available in this menu.</p>
     {% endif %}
 </ul>
