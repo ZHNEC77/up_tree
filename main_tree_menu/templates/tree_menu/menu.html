@@ -2,11 +2,13 @@
     {% if items %}
     {% for item in items %}
     <li>
-        <a href="?{{ menu }}={{ item.slug }}">{{ item.title }}</a>
+        <a href="?{{ menu }}={{ item.slug }}" {% if item.is_open %} class="active" {% endif %}>
+            {{ item.title }}
+        </a>
+        {% if item.child_items and item.is_open %}
+        {% include 'tree_menu/menu.html' with items=item.child_items menu=menu %}
+        {% endif %}
     </li>
-    {% if item.child_items %}
-    {% include 'tree_menu/menu.html' with items=item.child_items %}
-    {% endif %}
     {% endfor %}
     {% else %}
     <p>No items available in this menu.</p>
